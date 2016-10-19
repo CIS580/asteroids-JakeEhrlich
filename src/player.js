@@ -2,6 +2,9 @@
 
 const MS_PER_FRAME = 1000/8;
 
+const Asteroid = require('./asteroid.js');
+const Bullet = require('./bullet.js');
+
 /**
  * @module exports the Player class
  */
@@ -12,26 +15,29 @@ module.exports = exports = Player;
  * Creates a new player object
  * @param {Postition} position object specifying an x and y
  */
-function Player(position, canvas) {
+function Player(position, canvas, objs) {
+  this.objs = objs;
   this.worldWidth = canvas.width;
   this.worldHeight = canvas.height;
   this.state = "idle";
   this.position = {
     x: position.x,
     y: position.y
-  };
+  }
   this.velocity = {
     x: 0,
     y: 0
   }
   this.angle = 0;
-  this.radius  = 64;
+  this.radius  = 10;
   this.thrusting = false;
   this.steerLeft = false;
   this.steerRight = false;
+  var pew = new Audio('sounds/pew.mp3');
 
   var self = this;
   window.onkeydown = function(event) {
+    //console.log(event);
     switch(event.key) {
       case 'ArrowUp': // up
       case 'w':
@@ -44,6 +50,14 @@ function Player(position, canvas) {
       case 'ArrowRight': // right
       case 'd':
         self.steerRight = true;
+        break;
+      case ' ':
+        var speed = 0.3;
+        var angle = -(self.angle + Math.PI/2);
+        var vx = speed * Math.cos(angle);
+        var vy = speed * Math.sin(angle);
+        self.objs.add(new Bullet([self.position.x, self.position.y], [vx, vy]))
+        new Audio('sounds/pew.mp3').play();
         break;
     }
   }
@@ -66,7 +80,33 @@ function Player(position, canvas) {
   }
 }
 
+Player.prototype.getPos = function() {
+  return [this.position.x, this.position.y];
+}
 
+function drawStroked(ctx, text, x, y) {
+    ctx.font = "48px impact"
+    ctx.strokeStyle = 'black';
+    ctx.lineWidth = 8;
+    ctx.strokeText(text, x, y);
+    ctx.font = "48px impact"
+    ctx.fillStyle = 'white';
+    ctx.fillText(text, x, y);
+}
+
+Player.prototype.handle = function (obj) {
+  if(obj instanceof Asteroid) {
+    new Audio('sounds/kaboom2.mp3').play()
+    lives -= 1;
+    this.position.x = Math.random()*(obj.screenW - 50) + 50
+    this.position.y = Math.random()*(obj.screenH - 50) + 50;
+    if(lives == 0) {
+      drawStroked(this.ctx, "no me gusta", 270, 270);
+      asdf.asdfasdf().asdf[3]; //crash the game because I'm a terrible person
+    }
+    //console.log("you defeated");
+  }
+}
 
 /**
  * @function updates the player object
@@ -81,10 +121,11 @@ Player.prototype.update = function(time) {
     this.angle -= 0.1;
   }
   // Apply acceleration
+  var thrust = 0.1;
   if(this.thrusting) {
     var acceleration = {
-      x: Math.sin(this.angle),
-      y: Math.cos(this.angle)
+      x: Math.sin(this.angle) * thrust,
+      y: Math.cos(this.angle) * thrust
     }
     this.velocity.x -= acceleration.x;
     this.velocity.y -= acceleration.y;
@@ -105,6 +146,7 @@ Player.prototype.update = function(time) {
  * {CanvasRenderingContext2D} ctx the context to render into
  */
 Player.prototype.render = function(time, ctx) {
+  this.ctx = ctx;
   ctx.save();
 
   // Draw player's ship
